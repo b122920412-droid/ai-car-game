@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 體感避障小遊戲</title>
+    <style>
+        body { margin: 0; background: black; overflow: hidden; font-family: sans-serif; }
+        #gameArea { position: relative; width: 400px; height: 600px; margin: 20px auto; background: #111; border: 2px solid white; }
+        #plane { position: absolute; width: 40px; height: 40px; background: url('https://cdn-icons-png.flaticon.com/512/1995/1995726.png') no-repeat center/contain; bottom: 10px; left: 180px; transition: left 0.1s linear; }
+        .obstacle { position: absolute; width: 40px; height: 40px; background: red; top: 0px; }
+        #gameOver { position: absolute; width: 100%; top: 40%; text-align: center; color: red; font-size: 32px; display: none; }
+    </style>
+</head>
+<body>
+    <div id="gameArea">
+        <div id="plane"></div>
+        <div id="gameOver">遊戲結束</div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // Firebase 連線資訊
+        const firebaseConfig = {
+            apiKey: "AIzaSyC2-YD5-cdNaPf7-5Hfzjj_yGOHBaLWN6s",
+            authDomain: "ai-car-game.firebaseapp.com",
+            projectId: "ai-car-game",
+            storageBucket: "ai-car-game.firebasestorage.app",
+            messagingSenderId: "610670474643",
+            appId: "1:610670474643:web:5c28d61b9300644fad2466",
+            measurementId: "G-9FYRDJCSVS"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const plane = document.getElementById('plane');
+        let planeX = 180;
+        let gameRunning = true;
+
+        // AI 穩定化邏輯：讀取雲端數值並過濾雜訊 [cite: 58]
+        onValue(ref(db, 'car/tilt'), (snapshot) => {
+            if (!gameRunning) return;
+            const tilt = snapshot.val() || 0;
+            // 數位死區：傾斜度大於 8 度才移動 [cite: 57]
+            if (Math.abs(tilt) > 8) { 
+                if (tilt < 0 && planeX > 0) planeX -= 15;
+                else if (tilt > 0 && planeX < 360) planeX += 15;
+                plane.style.left = planeX + 'px';
+            }
+        });
+
+        // 障礙物生成與碰撞偵測 [cite: 94, 118, 120]
+        function createObstacle() {
+            if (!gameRunning) return;
+            const obs = document.createElement('div');
+            obs.classList.add('obstacle');
+            obs.style.left = Math.floor(Math.random() * 10) * 40 + 'px';
+            document.getElementById('gameArea').appendChild(obs);
+            let obsY = 0;
+            const timer = setInterval(() => {
+                if (!gameRunning) { obs.remove(); clearInterval(timer); return; }
+                obsY += 5;
+                obs.style.top = obsY + 'px';
+                const pR = plane.getBoundingClientRect();
+                const oR = obs.getBoundingClientRect();
+                if (oR.bottom >= pR.top && oR.left < pR.right && oR.right > pR.left) {
+                    gameRunning = false;
+                    document.getElementById('gameOver').style.display = 'block';
+                }
+                if (obsY > 600) { obs.remove(); clearInterval(timer); }
+            }, 30);
+        }
+        setInterval(() => { if (gameRunning) createObstacle(); }, 1000);
+    </script>
+</body>
+</html>
