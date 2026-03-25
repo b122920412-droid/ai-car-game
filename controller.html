@@ -3,64 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 雙模控制器</title>
+    <title>AI 體感控制器</title>
     <style>
         body { background: #111; color: white; text-align: center; font-family: sans-serif; margin: 0; touch-action: manipulation; }
-        .btn-container { display: flex; justify-content: space-around; margin-top: 50px; }
-        .control-btn { width: 140px; height: 140px; font-size: 30px; border-radius: 20px; background: #444; color: white; border: none; font-weight: bold; }
-        .control-btn:active { background: #007bff; }
-        #status-btn { padding: 15px; background: #28a745; color: white; border: none; border-radius: 10px; width: 80%; margin-top: 20px; font-size: 18px; }
+        .btn-box { display: flex; justify-content: space-around; margin-top: 50px; }
+        .btn { width: 140px; height: 140px; font-size: 30px; border-radius: 20px; background: #444; color: white; border: none; font-weight: bold; }
+        .btn:active { background: #007bff; }
+        #sensor-btn { padding: 15px; background: #28a745; color: white; border: none; border-radius: 10px; width: 80%; margin-top: 20px; }
         #val { font-size: 60px; color: #00ff00; margin: 20px; }
     </style>
 </head>
 <body>
     <h2>AI 跨裝置控制端</h2>
-    <button id="status-btn" onclick="startControl()">啟動體感感測器</button>
+    <button id="sensor-btn" onclick="start()">啟動體感感測</button>
     <div id="val">0</div>
-    <div class="btn-container">
-        <button class="control-btn" id="leftBtn">左移</button>
-        <button class="control-btn" id="rightBtn">右移</button>
+    <div class="btn-box">
+        <button class="btn" id="L">左</button>
+        <button class="btn" id="R">右</button>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // Firebase 連線資訊
-        const firebaseConfig = {
-            apiKey: "AIzaSyC2-YD5-cdNaPf7-5Hfzjj_yGOHBaLWN6s",
-            authDomain: "ai-car-game.firebaseapp.com",
-            projectId: "ai-car-game",
-            storageBucket: "ai-car-game.firebasestorage.app",
-            messagingSenderId: "610670474643",
-            appId: "1:610670474643:web:5c28d61b9300644fad2466",
-            measurementId: "G-9FYRDJCSVS"
-        };
-
+        const firebaseConfig = { /* 貼上與 index.html 相同的鑰匙 */ };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const tiltRef = ref(db, 'car/tilt');
 
-        // 點擊螢幕按鈕控制 (觸控模式)
-        const setTilt = (v) => set(tiltRef, v);
-        document.getElementById('leftBtn').addEventListener('touchstart', (e) => { e.preventDefault(); setTilt(-30); });
-        document.getElementById('leftBtn').addEventListener('touchend', () => setTilt(0));
-        document.getElementById('rightBtn').addEventListener('touchstart', (e) => { e.preventDefault(); setTilt(30); });
-        document.getElementById('rightBtn').addEventListener('touchend', () => setTilt(0));
+        // 按鈕控制
+        const send = (v) => set(tiltRef, v);
+        document.getElementById('L').onpointerdown = () => send(-30);
+        document.getElementById('L').onpointerup = () => send(0);
+        document.getElementById('R').onpointerdown = () => send(30);
+        document.getElementById('R').onpointerup = () => send(0);
 
-        // 體感偵測控制 (陀螺儀模式)
-        window.startControl = () => {
-            document.getElementById('status-btn').style.display = 'none';
+        // 體感控制
+        window.start = () => {
+            document.getElementById('sensor-btn').style.display = 'none';
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission().then(s => { if(s==='granted') initSensor(); });
-            } else { initSensor(); }
+                DeviceOrientationEvent.requestPermission().then(s => { if(s==='granted') init(); });
+            } else { init(); }
         };
 
-        function initSensor() {
+        function init() {
             window.addEventListener('deviceorientation', (e) => {
                 let tilt = Math.round(e.gamma);
                 document.getElementById('val').innerText = tilt;
-                setTilt(tilt);
+                send(tilt);
             });
         }
     </script>
